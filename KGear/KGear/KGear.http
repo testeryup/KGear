@@ -1,0 +1,6 @@
+@KGear_HostAddress = https://localhost:7211
+
+GET {{KGear_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
