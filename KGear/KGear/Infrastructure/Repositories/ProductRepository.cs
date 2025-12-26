@@ -2,7 +2,7 @@
 using KGear.Domain.Entities;
 using KGear.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
-using KGear.Infrastructure.Persistence.AppDbContext;
+// using KGear.Infrastructure.Persistence;
 
 namespace KGear.Infrastructure.Repositories;
 
