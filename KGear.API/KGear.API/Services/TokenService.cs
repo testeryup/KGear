@@ -2,22 +2,22 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using KGear.Application.Interfaces;
-using KGear.Domain.Entities;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using KGear.API.Configurations;
+using KGear.API.Data;
+using KGear.API.Data.Entities;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
-namespace KGear.Infrastructure.Services;
+namespace KGear.API.Services;
 
-public class JwtProvider : IJwtProvider
+public class TokenService
 {
-    private readonly IConfiguration _configuration;
-    
-    public JwtProvider(IConfiguration configuration)
-    {
-        _configuration = configuration;
-    }
+    private readonly JwtSettings _jwtSettings;
 
+    public TokenService(IOptions<JwtSettings> options)
+    {
+        _jwtSettings = options.Value;
+    }
     public string GenerateAccessToken(User user)
     {
         var claims = new List<Claim>
@@ -27,17 +27,18 @@ public class JwtProvider : IJwtProvider
             new Claim(ClaimTypes.Role, user.Role.ToString())
         };
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Key));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var token = new JwtSecurityToken(
-            issuer: _configuration["Jwt:Issuer"],
-            audience: _configuration["Jwt:Audience"],
+            issuer: _jwtSettings.Issuer,
+            audience: _jwtSettings.Audience,
             claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(30),
+            expires: DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes),
             signingCredentials: creds
-            );
+        );
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
+    
     public string GenerateRefreshToken()
     {
         var randomNumber = new byte[64];
@@ -45,7 +46,6 @@ public class JwtProvider : IJwtProvider
         rng.GetBytes(randomNumber);
         return Convert.ToBase64String(randomNumber);
     }
-
     public ClaimsPrincipal GetPrincipalFromExpiredToken(string token)
     {
         var tokenValidatorParameters = new TokenValidationParameters
@@ -54,10 +54,12 @@ public class JwtProvider : IJwtProvider
             ValidateIssuer = false,
             ValidateLifetime = false,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!)),
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Key!)),
+            ValidAlgorithms = new[] { SecurityAlgorithms.HmacSha256 }
         };
         var tokenHandler = new JwtSecurityTokenHandler();
         var principal = tokenHandler.ValidateToken(token, tokenValidatorParameters, out SecurityToken securityToken);
         return principal;
     }
+
 }

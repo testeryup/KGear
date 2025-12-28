@@ -1,0 +1,7 @@
+﻿services:
+  kgear.api:
+    image: kgear.api
+    build:
+      context: .
+      dockerfile: KGear.API/Dockerfile
+

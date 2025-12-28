@@ -27,11 +27,11 @@ public class ProductService
             Description = request.Description,
             Price = request.Price,
             ImageUrl = request.ImageUrl,
-            CreatedOn =  DateTime.UtcNow,
-            ModifiedOn = DateTime.UtcNow,
-            IsActive = true
+            // CreatedOn =  DateTime.UtcNow,
+            // ModifiedOn = DateTime.UtcNow,
+            // IsActive = true
         };
         await _productRepository.AddAsync(product);
-        return new ProductDTO.CreateProductResponse(product.Id, product.Name, product.Description, product.Price, product.CreatedOn);
+        return new ProductDTO.CreateProductResponse(product.Id, product.Name, product.CreatedOn);
     }
 }

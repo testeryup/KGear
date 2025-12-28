@@ -5,5 +5,5 @@ namespace KGear.Application.Interfaces;
 public interface IIdentityService
 {
     Task<UserDTO.LoginResponse> AuthenticateAsync(UserDTO.LoginRequest request);
-    Task<UserDTO.LoginResponse> RefreshTokenAsync(string expiredToken, string refreshToken);
+    Task<UserDTO.LoginResponse> RefreshTokenAsync(UserDTO.RefreshRequest request);
 }
