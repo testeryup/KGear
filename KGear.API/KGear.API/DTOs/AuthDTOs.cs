@@ -1,9 +1,11 @@
+using KGear.API.Data.Entities;
+
 namespace KGear.API.DTOs;
 
 public class AuthDTOs
 {
     public record RegisterRequest(string Name, string Email, string Password, string? Address);
-    public record RegisterResponse(string Name, string Email);
+    public record RegisterResponse(string Name, string Email, string Status);
     
     public record LoginRequest(string Email, string Password);
     public record LoginResponse(string AccessToken, string Email);

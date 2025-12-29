@@ -1,3 +1,5 @@
+using KGear.API.Exceptions;
+
 namespace KGear.API.Middlewares;
 
 public class ExceptionHandlingMiddleware
@@ -28,17 +30,26 @@ public class ExceptionHandlingMiddleware
     {
         context.Response.ContentType = "application/json";
 
-        context.Response.StatusCode = exception switch
+        int statusCode = StatusCodes.Status500InternalServerError;
+        string message = "Một lỗi không mong đợi đã xảy ra";
+
+        if (exception is BaseException customException)
         {
-            UnauthorizedAccessException => StatusCodes.Status401Unauthorized,
-            KeyNotFoundException => StatusCodes.Status404NotFound,
-            _ => StatusCodes.Status500InternalServerError
-        };
+            statusCode = customException.StatusCode;
+            message = customException.Message;
+        }
+        else if (exception is FluentValidation.ValidationException valException)
+        {
+            statusCode = StatusCodes.Status400BadRequest;
+            message = valException?.Message ?? "Dữ liệu không hợp lệ";
+        }
+        context.Response.StatusCode = statusCode;
 
         var response = new
         {
-            error = exception.Message,
-            detail = "Vui lòng thử lại sau nhé"
+            errorCode = statusCode,
+            error = message,
+            detail = exception.InnerException?.Message
         };
 
         return context.Response.WriteAsJsonAsync(response);

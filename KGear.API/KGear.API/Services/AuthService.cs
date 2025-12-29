@@ -1,11 +1,14 @@
+using System.Data;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using FluentValidation;
 using KGear.API.Configurations;
 using KGear.API.Data;
 using KGear.API.Data.Entities;
 using KGear.API.DTOs;
+using KGear.API.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -17,12 +20,14 @@ public class AuthService
     private readonly JwtSettings _jwtSettings;
     private readonly AppDbContext _dbContext;
     private readonly TokenService _tokenService;
-    
-    public AuthService(IOptions<JwtSettings> jwtOptions,  AppDbContext dbContext, TokenService tokenService)
+    private readonly IValidator<AuthDTOs.RegisterRequest> _registerRequestValidator;
+    public AuthService(IOptions<JwtSettings> jwtOptions,  AppDbContext dbContext, 
+        TokenService tokenService, IValidator<AuthDTOs.RegisterRequest> registerRequestValidator)
     {
         _jwtSettings = jwtOptions.Value;
         _dbContext = dbContext;
         _tokenService = tokenService;
+        _registerRequestValidator = registerRequestValidator;
     }
 
 
@@ -64,7 +69,7 @@ public class AuthService
         var user = await GetUserByEmailAsync(request.Email);
         if (user == null || user.IsActive == false|| !BCrypt.Net.BCrypt.Verify(request.Password, user.HashedPassword))
         {
-            throw new UnauthorizedAccessException("Unauthorized");
+            throw new NotFoundException("Unauthorized");
         }
 
         var refreshToken = _tokenService.GenerateRefreshToken();
@@ -74,5 +79,50 @@ public class AuthService
         await _dbContext.SaveChangesAsync();
         return (new AuthDTOs.LoginResponse(accessToken, user.Email), refreshToken);
     }
-    
+
+    public async Task<AuthDTOs.RegisterResponse> RegisterAsync(AuthDTOs.RegisterRequest request)
+    {
+        var validator =  await _registerRequestValidator.ValidateAsync(request);
+        if (!validator.IsValid)
+        {
+            throw new BadRequestException(validator.Errors.First().ErrorMessage);
+        }
+        // if (string.IsNullOrEmpty(request.Email) || 
+        //     string.IsNullOrEmpty(request.Password) ||  
+        //     request.Password.Length < 8 ||  
+        //     request.Password.Length > 30 ||
+        //     string.IsNullOrEmpty(request.Address) || 
+        //     string.IsNullOrEmpty(request.Name)
+        //     )
+        // {
+        //     throw new BadRequestException("Invalid credentials");
+        // }
+
+        if (await _dbContext.Users.AnyAsync(x => x.Email == request.Email))
+        {
+            throw new UnauthorizedAppException("Email đã tồn tại");
+        }
+        var refreshToken = _tokenService.GenerateRefreshToken();
+        var newUser = new User()
+        {
+            Name = request.Name,
+            Email = request.Email,
+            HashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password),
+            Address = request.Address,
+            Role = UserRole.Buyer,
+            RefreshToken = refreshToken,
+            RefreshTokenExpiresTime = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays)
+        };
+        var user = await _dbContext.Users.AddAsync(newUser);
+        await _dbContext.SaveChangesAsync();
+        if (user == null)
+        {
+            throw new UnauthorizedAccessException("Thông tin không hợp lệ");
+        }
+        return new AuthDTOs.RegisterResponse(
+            Name: request.Name, 
+            Email: request.Email, 
+            Status: "success"
+        );
+    }
 }

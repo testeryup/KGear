@@ -54,4 +54,10 @@ public class AuthController : ControllerBase
         };
         Response.Cookies.Append("refreshToken", newRefreshToken, cookieOptions);
     }
+
+    [HttpPost("register")]
+    public async Task<IActionResult> Register([FromBody] AuthDTOs.RegisterRequest registerRequest)
+    {
+        return Ok(await _authService.RegisterAsync(registerRequest));
+    }
 }
