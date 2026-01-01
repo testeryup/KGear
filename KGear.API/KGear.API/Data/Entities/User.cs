@@ -2,7 +2,7 @@ namespace KGear.API.Data.Entities;
 
 public class User : BaseEntity
 {
-    public long Id { get; set; }
+    // public long Id { get; set; }
     public string Name { get; set; }
     public string Email { get; set; } = string.Empty;
     public string HashedPassword { get; set; } = string.Empty;

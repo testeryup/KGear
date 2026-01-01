@@ -21,8 +21,12 @@ public class AuthService
     private readonly AppDbContext _dbContext;
     private readonly TokenService _tokenService;
     private readonly IValidator<AuthDTOs.RegisterRequest> _registerRequestValidator;
-    public AuthService(IOptions<JwtSettings> jwtOptions,  AppDbContext dbContext, 
-        TokenService tokenService, IValidator<AuthDTOs.RegisterRequest> registerRequestValidator)
+    public AuthService(
+        IOptions<JwtSettings> jwtOptions,  
+        AppDbContext dbContext, 
+        TokenService tokenService, 
+        IValidator<AuthDTOs.RegisterRequest> registerRequestValidator
+        )
     {
         _jwtSettings = jwtOptions.Value;
         _dbContext = dbContext;
@@ -87,16 +91,7 @@ public class AuthService
         {
             throw new BadRequestException(validator.Errors.First().ErrorMessage);
         }
-        // if (string.IsNullOrEmpty(request.Email) || 
-        //     string.IsNullOrEmpty(request.Password) ||  
-        //     request.Password.Length < 8 ||  
-        //     request.Password.Length > 30 ||
-        //     string.IsNullOrEmpty(request.Address) || 
-        //     string.IsNullOrEmpty(request.Name)
-        //     )
-        // {
-        //     throw new BadRequestException("Invalid credentials");
-        // }
+
 
         if (await _dbContext.Users.AnyAsync(x => x.Email == request.Email))
         {
@@ -113,12 +108,10 @@ public class AuthService
             RefreshToken = refreshToken,
             RefreshTokenExpiresTime = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays)
         };
-        var user = await _dbContext.Users.AddAsync(newUser);
+        //
+        _dbContext.Users.Add(newUser);
         await _dbContext.SaveChangesAsync();
-        if (user == null)
-        {
-            throw new UnauthorizedAccessException("Thông tin không hợp lệ");
-        }
+        
         return new AuthDTOs.RegisterResponse(
             Name: request.Name, 
             Email: request.Email, 

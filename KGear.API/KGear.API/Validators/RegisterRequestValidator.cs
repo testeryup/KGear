@@ -9,7 +9,7 @@ public class RegisterRequestValidator : AbstractValidator<AuthDTOs.RegisterReque
     {
         RuleFor(x => x.Email)
             .NotEmpty().WithMessage("Email không được để trống")
-            .EmailAddress().WithMessage("Định dạng Email không hợp lệ");
+            .Matches(@"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").WithMessage("Định dạng Email không hợp lệ");
 
         RuleFor(x => x.Password)
             .NotEmpty().WithMessage("Mật khẩu không được để trống")

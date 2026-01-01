@@ -37,7 +37,8 @@ public class AuthController : ControllerBase
         {
             return Unauthorized("No refresh token provided");
         }
-        
+
+        // Console.WriteLine($"accessToken: {accessToken}");
         var (newAccessToken, newRefreshToken) = await _authService.RefreshTokenAsync(accessToken, refreshToken);
         SetRefreshTokenCookie(newRefreshToken);
         return Ok(new {accessToken = newAccessToken});
