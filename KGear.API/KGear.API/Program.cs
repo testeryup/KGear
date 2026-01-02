@@ -22,8 +22,10 @@ builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(
 );
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<ProductService>();
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
 builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
+builder.Services.AddScoped<IMediaService, CloudinaryService>();
 builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();
 // builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddAuthentication(options =>

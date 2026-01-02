@@ -8,6 +8,10 @@ public class AppDbContext : DbContext
     public AppDbContext(DbContextOptions<AppDbContext> options) 
         : base(options){}
     public DbSet<User> Users { get; set; }
+    public DbSet<Product> Products { get; set; }
+    public DbSet<MediaAsset> MediaAssets { get; set; }
+    public DbSet<ProductVariant> ProductVariants { get; set; }
+    public DbSet<ProductMedia> ProductMedias { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

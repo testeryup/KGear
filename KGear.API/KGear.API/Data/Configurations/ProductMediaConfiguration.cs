@@ -13,7 +13,7 @@ public class ProductMediaConfiguration : IEntityTypeConfiguration<ProductMedia>
         builder.HasOne(x => x.Product)
             .WithMany(p => p.ProductMedias)
             .HasForeignKey(x => x.ProductId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
         
         builder.HasOne(x => x.ProductVariant)
             .WithMany(v => v.VariantMedias)

@@ -258,7 +258,7 @@ namespace KGear.API.Data.Migrations
                     b.HasOne("KGear.API.Data.Entities.Product", "Product")
                         .WithMany("ProductMedias")
                         .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("KGear.API.Data.Entities.ProductVariant", "ProductVariant")
