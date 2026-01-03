@@ -2,6 +2,7 @@ using CloudinaryDotNet.Actions;
 using KGear.API.Data;
 using KGear.API.Data.Entities;
 using KGear.API.DTOs;
+using KGear.API.Exceptions;
 
 namespace KGear.API.Services;
 
@@ -18,31 +19,75 @@ public class ProductService
 
     public async Task CreateProduct(CreateProductDto createProductDto)
     {
-        var uploadTasks = new List<Task<(string SKU, ImageUploadResult Result)>>();
-    
-        foreach (var variant in createProductDto.Variants)
-        {
-            foreach (var media in variant.Images)
+        var uploadTasks = createProductDto.Variants.SelectMany(
+            v => v.Images.Select(async img =>
             {
-                // Không cần Task.Run ở đây nếu UploadImage là async
-                uploadTasks.Add(_mediaService.UploadImage(media)
-                    .ContinueWith(t => (variant.SKU, t.Result)));
-            }
-        }
-
+                var res = await _mediaService.UploadImage(img);
+                return (SKU: v.SKU, Result: res);
+            })
+        ).ToList();
         var results = await Task.WhenAll(uploadTasks);
-    
-        var uploadedPublicIds = results
-            .Select(r => r.Result.PublicId)
-            .Where(id => !string.IsNullOrEmpty(id))
-            .ToList();
+        var uploadedPublicIds = results.Select(r => r.Result.PublicId)
+            .Where(id => !string.IsNullOrEmpty(id)).ToList();
 
-        // Kiểm tra nếu có bất kỳ ảnh nào upload lỗi
+        // 1. Kiểm tra lỗi Upload và dọn dẹp ngay lập tức
         if (uploadedPublicIds.Count != uploadTasks.Count)
         {
-            // Tái sử dụng hàm mass delete
             await _mediaService.DeleteImages(uploadedPublicIds);
-            throw new Exception("One or more images failed to upload. All successful uploads have been rolled back.");
+            throw new UploadException("Upload failed. Cleanup triggered.");
+        }
+
+        var dictResults = results.GroupBy(result => result.SKU)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.Result).ToList());
+        using var transaction = await _dbContext.Database.BeginTransactionAsync();
+        try
+        {
+            var product = new Product {
+                Name = createProductDto.Name,
+                Description = createProductDto.Description,
+                BrandName = createProductDto.BrandName
+            };
+
+            foreach (var variantDto in createProductDto.Variants)
+            {
+                var variant = new ProductVariant {
+                    SKU = variantDto.SKU,
+                    Name = variantDto.Name,
+                    Price = variantDto.Price,
+                    Stock = variantDto.Stock,
+                    Product = product // Dùng Navigation Property thay vì ProductId
+                };
+
+                int imageCounter = 1;
+                foreach (var imgRes in dictResults[variantDto.SKU])
+                {
+                    var asset = new MediaAsset {
+                        Url = imgRes.Url.ToString(),
+                        PublicId = imgRes.PublicId,
+                        AltText = $"{product.Name} - {variant.SKU}"
+                    };
+
+                    var mapping = new ProductMedia {
+                        Product = product,      // Navigation Property
+                        ProductVariant = variant, // Navigation Property
+                        MediaAsset = asset,     // Navigation Property
+                        IsMain = imageCounter == 1,
+                        SortOrder = imageCounter
+                    };
+                    _dbContext.ProductMedias.Add(mapping);
+                    imageCounter++;
+                }
+            }
+
+            // EF Core sẽ tự tính toán thứ tự: Product -> Variant -> Asset -> Mapping
+            await _dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch (Exception)
+        {
+            await transaction.RollbackAsync();
+            await _mediaService.DeleteImages(uploadedPublicIds);
+            throw;
         }
     }
     public async Task CreateProductAsync(CreateProductDto createProductDto)

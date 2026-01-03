@@ -16,7 +16,8 @@ public class ProductController : ControllerBase
     [HttpPost("create")]
     public async Task<IActionResult> CreateNewProductAsync([FromForm] CreateProductDto dto)
     {
-        await _productService.CreateProductAsync(dto);
+        // await _productService.CreateProductAsync(dto);
+        await _productService.CreateProduct(dto);
         return Ok(new {success = true});
     }
 }

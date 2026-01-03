@@ -24,3 +24,8 @@ public class UnauthorizedAppException : BaseException
 {
     public UnauthorizedAppException(string message) : base(message, StatusCodes.Status401Unauthorized) { }
 }
+
+public class UploadException : BaseException
+{
+    public UploadException(string message) : base(message, StatusCodes.Status422UnprocessableEntity) { }
+}
