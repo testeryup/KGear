@@ -5,6 +5,7 @@ using KGear.API.Data.Entities;
 using KGear.API.DTOs;
 using KGear.API.Exceptions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Identity.Client;
 
 namespace KGear.API.Services;
 
@@ -213,5 +214,44 @@ public class ProductService
             throw new BadRequestException(e.Message);
         }
     }
+
+    public async Task UpdateVariantInfo(UpdateVariantDto updateVariantDto)
+    {
+        var variant = await _dbContext.ProductVariants.FirstOrDefaultAsync(v => v.Id == updateVariantDto.Id)
+            ?? throw new BadRequestException($"Variant does not exist");
+        using var transaction = await _dbContext.Database.BeginTransactionAsync();
+        try
+        {
+            variant.Name = updateVariantDto.Name;
+            variant.Price = updateVariantDto.Price;
+            variant.Stock = updateVariantDto.Stock;
+            variant.SKU = updateVariantDto.SKU;
+            await _dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch (Exception e)
+        {
+            await transaction.RollbackAsync();
+            throw new BadRequestException(e.Message);
+        }
+    }
+
+    public async Task DeactiveProduct(long id)
+    {
+        var product = await _dbContext.Products.FirstOrDefaultAsync(p => p.Id == id) 
+                      ?? throw new BadRequestException($"Product does not exist");
+        product.IsActive = false;
+        
+        await _dbContext.SaveChangesAsync();
+    }
+
+    public async Task DeactiveVariant(long id)
+    {
+        var variant = await _dbContext.ProductVariants.FirstOrDefaultAsync(v => v.Id == id)
+            ?? throw new BadRequestException($"Variant does not exist");
+        variant.IsActive = false;
+        await _dbContext.SaveChangesAsync();
+    }
+    
     
 }
