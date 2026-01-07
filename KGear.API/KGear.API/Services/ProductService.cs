@@ -1,8 +1,10 @@
+using System.Runtime.CompilerServices;
 using CloudinaryDotNet.Actions;
 using KGear.API.Data;
 using KGear.API.Data.Entities;
 using KGear.API.DTOs;
 using KGear.API.Exceptions;
+using Microsoft.EntityFrameworkCore;
 
 namespace KGear.API.Services;
 
@@ -163,4 +165,53 @@ public class ProductService
             throw;
         }
     }
+    public async Task UpdateProduct(UpdateProductDto updateDto)
+    {
+        var product = await _dbContext.Products
+            .Include(p => p.ProductVariants)
+            .ThenInclude(v => v.VariantMedias)
+            .ThenInclude(m => m.MediaAsset)
+            .FirstOrDefaultAsync(p => p.Id == updateDto.ProductId)
+            ?? throw new BadRequestException($"Product does not exist");
+
+        var oldPublicIdsToDelete = new List<string>();
+        
+        var variantIdsInDto = updateDto.ProductVariants
+            .Where(v => v.ProductId == product.Id)
+            .Select(v => v.Id)
+            .ToHashSet();
+        var variantsToDelete = product
+            .ProductVariants.Where(v => !variantIdsInDto.Contains(v.Id))
+            // .Select(v => v.Id)
+            .ToList();
+        foreach (var productVariant in variantsToDelete)
+        {
+            var pIds = productVariant.VariantMedias
+                .Select(v => v.MediaAsset.PublicId)
+                .ToHashSet();
+            
+        }
+
+    }
+
+    public async Task UpdateProductInfo(ProductDTO.UpdateProductDto productDto)
+    {
+        var product = await _dbContext.Products.FirstOrDefaultAsync(p => p.Id == productDto.Id)
+            ?? throw new BadRequestException($"Product does not exist");
+        using var transaction = await _dbContext.Database.BeginTransactionAsync();
+        try
+        {
+            product.Name = productDto.Name;
+            product.Description = productDto.Description;
+            product.BrandName = productDto.BrandName;
+            await _dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch (Exception e)
+        {
+            await transaction.RollbackAsync();
+            throw new BadRequestException(e.Message);
+        }
+    }
+    
 }
