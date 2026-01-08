@@ -4,6 +4,7 @@ using KGear.API.Data;
 using KGear.API.Data.Entities;
 using KGear.API.DTOs;
 using KGear.API.Exceptions;
+using Microsoft.AspNetCore.SignalR.Protocol;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Client;
 
@@ -236,6 +237,10 @@ public class ProductService
         }
     }
 
+    public async Task UpdateVariantImage()
+    {
+        
+    }
     public async Task DeactiveProduct(long id)
     {
         var product = await _dbContext.Products.FirstOrDefaultAsync(p => p.Id == id) 
@@ -252,6 +257,41 @@ public class ProductService
         variant.IsActive = false;
         await _dbContext.SaveChangesAsync();
     }
-    
-    
+
+    public async Task<ProductDTO.CursorResponse> GetProductsAsync(ProductDTO.CursorRequest request)
+    {
+        var query = _dbContext.Products.AsNoTracking();
+        if (request.LastId.HasValue)
+        {
+            query = query.Where(p => p.Id > request.LastId.Value);
+        }
+
+        var items = await query
+            .OrderBy(p => p.Id)
+            .Take(request.PageSize + 1)
+            .Select(p => new ProductInfo
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Description = p.Description,
+                BrandName = p.BrandName,
+                ThumbnailLink = p.ProductMedias
+                    .Where(m => m.SortOrder == 1)
+                    .Select(m => m.MediaAsset.Url)
+                    .FirstOrDefault()
+            })
+            .ToListAsync();
+        bool hasMore = items.Count > request.PageSize;
+        if (hasMore)
+        {
+            items.RemoveAt(request.PageSize - 1);
+        }
+        long? nextCursor = hasMore ? items.Last().Id : null;
+        return new ProductDTO.CursorResponse(
+            Status: true, 
+            Items: items, 
+            NextCursor: nextCursor, 
+            HasMore: hasMore
+            );
+    }
 }
