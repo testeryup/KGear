@@ -29,3 +29,8 @@ public class UploadException : BaseException
 {
     public UploadException(string message) : base(message, StatusCodes.Status422UnprocessableEntity) { }
 }
+
+public class OutOfStockException : BaseException
+{
+    public OutOfStockException(string message) : base(message, StatusCodes.Status422UnprocessableEntity) { }
+}

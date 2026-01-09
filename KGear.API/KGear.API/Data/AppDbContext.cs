@@ -12,6 +12,9 @@ public class AppDbContext : DbContext
     public DbSet<MediaAsset> MediaAssets { get; set; }
     public DbSet<ProductVariant> ProductVariants { get; set; }
     public DbSet<ProductMedia> ProductMedias { get; set; }
+    public DbSet<Order> Orders { get; set; }
+    public DbSet<OrderItem> OrderItems { get; set; }
+    public DbSet<Audit> Audits { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

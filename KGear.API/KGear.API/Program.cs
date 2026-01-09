@@ -22,6 +22,8 @@ builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(
 );
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<AuthService>();
+// add de claim user
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ProductService>();
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
 builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
