@@ -284,7 +284,7 @@ public class ProductService
         bool hasMore = items.Count > request.PageSize;
         if (hasMore)
         {
-            items.RemoveAt(request.PageSize - 1);
+            items.RemoveAt(request.PageSize);
         }
         long? nextCursor = hasMore ? items.Last().Id : null;
         return new ProductDTO.CursorResponse(

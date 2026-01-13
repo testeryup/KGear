@@ -5,4 +5,7 @@ public enum OrderStatus
     Pending,
     Shipped,
     Delivered,
+    Timeout,
+    Paid,
+    Cancelled
 }

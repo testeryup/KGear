@@ -19,78 +19,205 @@ public class OrderService
     }
     public async Task<OrderDTOs.PlaceOrderResponse> PlaceOrderAsync(OrderDTOs.PlaceOrderRequest request)
     {
-        var userClaim =  _httpContextAccessor.HttpContext?
-            .User?
-            .Identity?
-            .Name ?? null;
-        
-        if (userClaim == null)
+        var userIdClaim = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !long.TryParse(userIdClaim, out long userId))
         {
-            throw new AuthenticationException("User not authenticated");
+            throw new AuthenticationException("User not authenticated or ID invalid");
         }
-        
-        long.TryParse(userClaim,  out long userId);
-        
+
+        // var currentUserId = User.GetUserId();
         using var transaction = await _dbContext.Database.BeginTransactionAsync();
         try
         {
             var requestedItems = request.Items.OrderBy(i => i.VariantId).ToList();
+            var variantIds = requestedItems.Select(i => i.VariantId).ToHashSet();
+            
+            var variantData = await _dbContext.ProductVariants.AsNoTracking()
+                .Where(v => variantIds.Contains(v.Id))
+                .ToDictionaryAsync(v => v.Id, v => v.Price);
+
             decimal orderTotal = 0;
             ICollection<OrderItem> orderItems = new List<OrderItem>();
-            foreach (var requestedItem in requestedItems)
-            {
-                int rowAffected = await _dbContext.ProductVariants
-                    .Where(v => v.Id == requestedItem.VariantId && v.Stock > requestedItem.Quantity)
-                    .ExecuteUpdateAsync(setters => 
-                        setters.SetProperty(v => v.Stock,
-                            v => v.Stock - requestedItem.Quantity));
-                if (rowAffected == 0)
-                {
-                    throw new OutOfStockException($"Item with Id {requestedItem.VariantId} is out of stock or not exits");
-                }
-            }
 
             var order = new Order()
             {
                 UserId = userId,
                 Status = OrderStatus.Pending,
+                Address = request.Address,
+                City = request.City,
+                State = request.State,
+                Phone = request.Phone,
+                ZipCode =  request.ZipCode
             };
             foreach (var requestedItem in requestedItems)
             {
-                decimal unitPrice = await _dbContext.ProductVariants.AsNoTracking().Where(v => v.Id == requestedItem.VariantId)
-                    .Select(v => v.Price).Take(1).SumAsync();
-                var orderItem = new OrderItem()
+                int rowAffected = await _dbContext.ProductVariants
+                    .Where(v => v.Id == requestedItem.VariantId && v.Stock >= requestedItem.Quantity)
+                    .ExecuteUpdateAsync(setters =>
+                        setters.SetProperty(v => v.Stock,
+                            v => v.Stock - requestedItem.Quantity));
+                if (rowAffected == 0)
+                    throw new OutOfStockException($"Sản phẩm (ID: {requestedItem.VariantId}) không đủ hàng.");
+                if (!variantData.TryGetValue(requestedItem.VariantId, out decimal unitPrice))
+                    throw new KeyNotFoundException("Không tìm thấy thông tin giá của sản phẩm.");
+                orderItems.Add(new OrderItem
                 {
                     Order = order,
                     ProductVariantId = requestedItem.VariantId,
                     UnitPrice = unitPrice,
-                };
-                orderItems.Add(orderItem);
+                    Quantity = requestedItem.Quantity,
+                });
                 orderTotal += unitPrice * requestedItem.Quantity;
             }
+
             order.TotalAmount = orderTotal;
             order.OrderItems = orderItems;
-            
+
             _dbContext.Orders.Add(order);
-            _dbContext.OrderItems.AddRange(orderItems);
             await _dbContext.SaveChangesAsync();
 
-            var audit = new Audit()
+            _dbContext.Audits.Add(new Audit()
             {
                 Action = "PLACE_ORDER",
                 Details = $"User placed {order.Id} success"
-            };
-            _dbContext.Audits.Add(audit);
+            });
             await _dbContext.SaveChangesAsync();
-            
+
             await transaction.CommitAsync();
-            
-            return new OrderDTOs.PlaceOrderResponse(true, DateTime.UtcNow, "Order Placed successfully");
+            return new OrderDTOs.PlaceOrderResponse(true, DateTime.UtcNow, "Đặt hàng thành công");
+        }
+        catch (OutOfMemoryException ex)
+        {
+            await transaction.RollbackAsync();
+            return new OrderDTOs.PlaceOrderResponse(false, DateTime.UtcNow, ex.Message);
         }
         catch (Exception)
         {
             await transaction.RollbackAsync();
-            return new OrderDTOs.PlaceOrderResponse(false, DateTime.UtcNow, "Order Failed");
+            return new OrderDTOs.PlaceOrderResponse(false, DateTime.UtcNow, "Lỗi hệ thống");
         }
+    }
+
+    public async Task<OrderDTOs.OrdersListResponse> ViewAllOrderListAsync(OrderDTOs.OrdersListRequest rq)
+    {
+        const int maxPageSize = 50;
+        int pageSize = Math.Min(rq.PageSize, maxPageSize);
+        var query = _dbContext.Orders.AsQueryable();
+        if (rq.LastId.HasValue)
+        {
+            query = query.Where(o => o.Id > rq.LastId.Value);
+        }
+
+        var orders = await query
+            .OrderBy(o => o.Id)
+            .Take(pageSize + 1)
+            .Select(o => new OrderBrief(o.Id,
+                o.Status.ToString(),
+                o.TotalAmount,
+                o.CreatedOn)
+            ).ToListAsync();
+        long? nextCursor = null;
+        bool hasMore = orders.Count > pageSize;
+        if (hasMore)
+        {
+            orders.RemoveAt(pageSize);
+            nextCursor = orders[pageSize - 1].Id;
+        }
+        return new OrderDTOs.OrdersListResponse(
+            true, 
+            nextCursor, 
+            hasMore, 
+            orders
+        );
+    }
+    // for normal user / customer
+    public async Task<OrderDTOs.OrdersListResponse> ViewUserOrdersAsync(OrderDTOs.OrdersListRequest rq, long userId)
+    {
+        const int maxPageSize = 50;
+        int pageSize = Math.Max(rq.PageSize, maxPageSize);
+        
+        var query = _dbContext.Orders.AsQueryable()
+            .Where(o => o.UserId == userId);
+
+        if (rq.LastId.HasValue)
+        {
+            query = query.Where(o => o.Id > rq.LastId.Value);
+        }
+
+        var orders = await query
+            .OrderBy(o => o.Id)
+            .Take(pageSize + 1)
+            .Select(o => new OrderBrief(
+                o.Id,
+                o.Status.ToString(),
+                o.TotalAmount,
+                o.CreatedOn
+            )).ToListAsync<OrderBrief>();
+
+        long? lastId = null;
+        bool hasMore = orders.Count > pageSize;
+        if (hasMore)
+        {
+            orders.RemoveAt(pageSize);
+            lastId = orders.Last().Id;
+        }
+
+        return new OrderDTOs.OrdersListResponse(
+            true,
+            lastId,
+            hasMore,
+            orders);
+    }
+
+    public async Task<OrderDTOs.OrderDetailResponse> GetOrderDetail(long userId, long orderId, string userRole)
+    {
+        var query = _dbContext.Orders.AsSplitQuery();
+        if (userRole != "Admin")
+        {
+            query = query.Where(o => o.UserId == userId);
+        }
+        
+        var orderDetail = await query
+            .Where(o => o.Id == orderId)
+            .Select(o => new
+            {
+                Id = o.Id,
+                UserId = o.UserId,
+                CreatedOn = o.CreatedOn,
+                Status = o.Status,
+                ZipCode = o.ZipCode,
+                Address = o.Address,
+                City = o.City,
+                State = o.State,
+                Phone = o.Phone,
+                Total = o.TotalAmount,
+                Variants = o.OrderItems.Select(i => new VariantInfo
+                {
+                    VariantId = i.ProductVariantId,
+                    UnitPrice = i.UnitPrice,
+                    Quantity = i.Quantity,
+                    Thumbnail = i.ProductVariant!.VariantMedias
+                        .Where(v => v.SortOrder == 1)
+                        .Select(m => m.MediaAsset.Url)
+                        .FirstOrDefault(),
+                    VariantName = i.ProductVariant.Name,
+                    ProductName = i.ProductVariant.Product.Name,
+                    ProductId = i.ProductVariant.Product.Id,
+                })
+            }).AsSplitQuery().FirstOrDefaultAsync();
+
+        if (orderDetail == null)
+        {
+            throw new NotFoundException("Order not found");
+        }
+        return new OrderDTOs.OrderDetailResponse(
+            orderDetail.Id,
+            orderDetail.UserId,
+            orderDetail.CreatedOn,
+            orderDetail.Status,
+            orderDetail.Total,
+            orderDetail.Variants
+        );
+         
     }
 }

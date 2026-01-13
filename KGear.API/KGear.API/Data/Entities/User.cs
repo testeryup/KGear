@@ -15,4 +15,5 @@ public class User : BaseEntity
     // Refresh token
     public string? RefreshToken { get; set; }
     public DateTime RefreshTokenExpiresTime { get; set; }
+    public ICollection<Order> Orders { get; set; } = new List<Order>();
 }

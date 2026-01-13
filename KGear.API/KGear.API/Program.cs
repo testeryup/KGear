@@ -9,6 +9,7 @@ using FluentValidation;
 using KGear.API.Middlewares;
 using KGear.API.Services;
 using KGear.API.Validators;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -46,6 +47,42 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)),
         ValidAlgorithms = new[] { SecurityAlgorithms.HmacSha256 }
     };
+});
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer((document, context, cancellationToken) =>
+    {
+        document.Info.Title = "KGear.API";
+        document.Info.Version = "v1";
+        
+        // Cấu hình Security Scheme (Chiếc khóa)
+        var requirement = new OpenApiSecurityRequirement
+        {
+            [new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Id = "Bearer",
+                    Type = ReferenceType.SecurityScheme
+                }
+            }] = Array.Empty<string>()
+        };
+        document.SecurityRequirements.Add(requirement);
+
+        var scheme = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.Http,
+            Name = "Authorization",
+            In = ParameterLocation.Header,
+            Scheme = "Bearer",
+            BearerFormat = "JWT",
+            Description = "Dán Token của bạn vào đây (không cần gõ chữ Bearer)"
+        };
+        document.Components ??= new OpenApiComponents();
+        document.Components.SecuritySchemes.Add("Bearer", scheme);
+        
+        return Task.CompletedTask;
+    });
 });
 var app = builder.Build();
 

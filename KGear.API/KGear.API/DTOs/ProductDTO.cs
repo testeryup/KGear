@@ -1,4 +1,5 @@
 ﻿using System.Net.Mime;
+using KGear.API.Data.Entities;
 
 namespace KGear.API.DTOs;
 
@@ -17,6 +18,8 @@ public class ProductInfo
     public string BrandName {get; set;} = string.Empty;
     public string? ThumbnailLink {get; set;}
 }
+
+
 public class ProductDTO
 {
     public record UpdateProductDto(long Id, string Name, string Description, string BrandName);
@@ -29,4 +32,6 @@ public class ProductDTO
         long? NextCursor,
         bool HasMore
     );
+
+
 }
