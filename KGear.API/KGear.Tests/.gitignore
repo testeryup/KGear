@@ -1,0 +1,9 @@
+/bin/
+/netcoreapp3.1/
+obj/
+*.exe
+*.dll
+*.log
+*.user
+*.suo
+*.tmp
