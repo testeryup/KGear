@@ -11,21 +11,12 @@ namespace KGear.API.Services;
 public class OrderService
 {
     private readonly AppDbContext _dbContext;
-    private readonly IHttpContextAccessor _httpContextAccessor;
-    public OrderService(AppDbContext dbContext, IHttpContextAccessor httpContextAccessor)
+    public OrderService(AppDbContext dbContext)
     {
         _dbContext = dbContext;
-        _httpContextAccessor = httpContextAccessor;
     }
-    public async Task<OrderDTOs.PlaceOrderResponse> PlaceOrderAsync(OrderDTOs.PlaceOrderRequest request)
+    public async Task<OrderDTOs.PlaceOrderResponse> PlaceOrderAsync(OrderDTOs.PlaceOrderRequest request, long userId)
     {
-        var userIdClaim = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !long.TryParse(userIdClaim, out long userId))
-        {
-            throw new AuthenticationException("User not authenticated or ID invalid");
-        }
-
-        // var currentUserId = User.GetUserId();
         using var transaction = await _dbContext.Database.BeginTransactionAsync();
         try
         {
@@ -84,17 +75,17 @@ public class OrderService
             await _dbContext.SaveChangesAsync();
 
             await transaction.CommitAsync();
-            return new OrderDTOs.PlaceOrderResponse(true, DateTime.UtcNow, "Đặt hàng thành công");
+            return new OrderDTOs.PlaceOrderResponse(true, DateTime.UtcNow, "Đặt hàng thành công", order.Id);
         }
         catch (OutOfMemoryException ex)
         {
             await transaction.RollbackAsync();
-            return new OrderDTOs.PlaceOrderResponse(false, DateTime.UtcNow, ex.Message);
+            return new OrderDTOs.PlaceOrderResponse(false, DateTime.UtcNow, ex.Message, null);
         }
         catch (Exception)
         {
             await transaction.RollbackAsync();
-            return new OrderDTOs.PlaceOrderResponse(false, DateTime.UtcNow, "Lỗi hệ thống");
+            return new OrderDTOs.PlaceOrderResponse(false, DateTime.UtcNow, "Lỗi hệ thống", null);
         }
     }
 
@@ -208,7 +199,7 @@ public class OrderService
 
         if (orderDetail == null)
         {
-            throw new NotFoundException("Order not found");
+            return null;
         }
         return new OrderDTOs.OrderDetailResponse(
             orderDetail.Id,

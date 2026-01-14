@@ -24,7 +24,7 @@ public class OrderDTOs
         string ZipCode,
         List<Item> Items);
     public record AddToCartRequest(long VariantId, int Quantity);
-    public record PlaceOrderResponse(bool Success, DateTime CreatedOn, string Message);
+    public record PlaceOrderResponse(bool Success, DateTime CreatedOn, string Message, long? OrderId);
     public record AddToCartResponse(bool Success, DateTime CreatedOn, string Message);
     
     public record OrdersListRequest(long? LastId, DateTime CreatedOn, int PageSize = 10);

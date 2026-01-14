@@ -19,9 +19,15 @@ public class OrderController : ControllerBase
         _orderService = orderService;
     }
     [HttpPost("order")]
-    public async Task PlaceOrderAsync([FromBody] Order order)
+    public async Task<IActionResult> PlaceOrderAsync([FromBody] OrderDTOs.PlaceOrderRequest request)
     {
         var userId = User.GetUserId();
+        if (userId == -1)
+        {
+            return BadRequest();
+        }
+        var result = await _orderService.PlaceOrderAsync(request, userId);
+        return Ok(result);
     }
 
     // [AllowAnonymous]

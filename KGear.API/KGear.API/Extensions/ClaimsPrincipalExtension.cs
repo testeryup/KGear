@@ -7,7 +7,7 @@ public static class ClaimsPrincipalExtension
     public static long GetUserId(this ClaimsPrincipal principal)
     {
         var claim =  principal.FindFirst(ClaimTypes.NameIdentifier);
-        return claim != null ? long.Parse(claim.Value) : 0;
+        return claim != null ? long.Parse(claim.Value) : -1;
     }
     public static string GetUserRole(this ClaimsPrincipal principal)
     {
