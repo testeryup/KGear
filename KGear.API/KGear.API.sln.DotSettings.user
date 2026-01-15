@@ -25,5 +25,8 @@
 	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=a6b6607d_002Ddbcf_002D42b0_002D9fac_002De2768f3ebe4b/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" IsActive="True" Name="GetOrderDetailAsync_WhenUserIsNotOwner_ShouldReturnNull" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
   &lt;TestAncestor&gt;&#xD;
     &lt;TestId&gt;xUnit::1555C8B5-345F-451F-9B48-6753EC44BF46::net9.0::KGear.Tests.OrderTest.GetOrderDetailAsync_WhenUserIsNotOwner_ShouldReturnNull&lt;/TestId&gt;&#xD;
+    &lt;TestId&gt;xUnit::1555C8B5-345F-451F-9B48-6753EC44BF46::net9.0::KGear.Tests.OrderTestPlace.PlaceOrder_ValidRequest_ShouldCreateOrderAndAudit&lt;/TestId&gt;&#xD;
+    &lt;TestId&gt;xUnit::1555C8B5-345F-451F-9B48-6753EC44BF46::net9.0::KGear.Tests.Intergrations.OrderTestPlace.PlaceOrder_ValidRequest_ShouldCreateOrderAndAudit&lt;/TestId&gt;&#xD;
+    &lt;TestId&gt;xUnit::1555C8B5-345F-451F-9B48-6753EC44BF46::net9.0::KGear.Tests.Intergrations.OrderTestPlace&lt;/TestId&gt;&#xD;
   &lt;/TestAncestor&gt;&#xD;
 &lt;/SessionState&gt;</s:String></wpf:ResourceDictionary>

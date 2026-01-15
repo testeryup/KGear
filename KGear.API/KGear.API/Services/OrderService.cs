@@ -77,7 +77,7 @@ public class OrderService
             await transaction.CommitAsync();
             return new OrderDTOs.PlaceOrderResponse(true, DateTime.UtcNow, "Đặt hàng thành công", order.Id);
         }
-        catch (OutOfMemoryException ex)
+        catch (OutOfStockException ex)
         {
             await transaction.RollbackAsync();
             return new OrderDTOs.PlaceOrderResponse(false, DateTime.UtcNow, ex.Message, null);

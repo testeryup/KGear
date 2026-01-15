@@ -28,7 +28,7 @@ public class OrderTest
     }
 
     [Fact]
-    public async Task PlaceOrderAsync_WhenUserIsNotOwner_ShouldReturnBadRequest()
+    public async Task PlaceOrderAsync_WhenValidRequest_ShouldReturnTrue()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
