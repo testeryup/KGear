@@ -65,15 +65,12 @@ public class OrderService
             order.OrderItems = orderItems;
 
             _dbContext.Orders.Add(order);
-            await _dbContext.SaveChangesAsync();
-
             _dbContext.Audits.Add(new Audit()
             {
                 Action = "PLACE_ORDER",
                 Details = $"User placed {order.Id} success"
             });
             await _dbContext.SaveChangesAsync();
-
             await transaction.CommitAsync();
             return new OrderDTOs.PlaceOrderResponse(true, DateTime.UtcNow, "Đặt hàng thành công", order.Id);
         }

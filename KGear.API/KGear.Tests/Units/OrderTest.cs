@@ -26,14 +26,5 @@ public class OrderTest
         
         Assert.Null(result);
     }
-
-    [Fact]
-    public async Task PlaceOrderAsync_WhenValidRequest_ShouldReturnTrue()
-    {
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
-        using var context = new AppDbContext(options);
-        
-    }
+    
 }
