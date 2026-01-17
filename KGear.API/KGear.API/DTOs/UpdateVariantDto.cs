@@ -2,7 +2,7 @@
 
 public class UpdateVariantDto
 {
-    public long Id { get; set; }
+    // public long Id { get; set; }
     public string SKU {get; set;} = string.Empty;
     public string Name {get; set;} = string.Empty;
     public decimal Price {get; set;}

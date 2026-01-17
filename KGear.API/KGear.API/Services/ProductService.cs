@@ -167,13 +167,13 @@ public class ProductService
             throw;
         }
     }
-    public async Task UpdateProduct(UpdateProductDto updateDto)
+    public async Task UpdateProduct(long productId, UpdateProductDto updateDto)
     {
         var product = await _dbContext.Products
             .Include(p => p.ProductVariants)
             .ThenInclude(v => v.VariantMedias)
             .ThenInclude(m => m.MediaAsset)
-            .FirstOrDefaultAsync(p => p.Id == updateDto.ProductId)
+            .FirstOrDefaultAsync(p => p.Id == productId)
             ?? throw new BadRequestException($"Product does not exist");
 
         var oldPublicIdsToDelete = new List<string>();
@@ -196,45 +196,32 @@ public class ProductService
 
     }
 
-    public async Task UpdateProductInfo(ProductDTO.UpdateProductDto productDto)
+    public async Task UpdateProductInfo(long productId, UpdateProductDto dto)
     {
-        var product = await _dbContext.Products.FirstOrDefaultAsync(p => p.Id == productDto.Id)
-            ?? throw new BadRequestException($"Product does not exist");
-        using var transaction = await _dbContext.Database.BeginTransactionAsync();
-        try
-        {
-            product.Name = productDto.Name;
-            product.Description = productDto.Description;
-            product.BrandName = productDto.BrandName;
-            await _dbContext.SaveChangesAsync();
-            await transaction.CommitAsync();
-        }
-        catch (Exception e)
-        {
-            await transaction.RollbackAsync();
-            throw new BadRequestException(e.Message);
-        }
-    }
+        var product = await _dbContext.Products.FindAsync(productId)
+                      ?? throw new BadRequestException("Product does not exist");
 
-    public async Task UpdateVariantInfo(UpdateVariantDto updateVariantDto)
+        product.Name = dto.Name;
+        product.Description = dto.Description;
+        product.BrandName = dto.BrandName;
+
+        await _dbContext.SaveChangesAsync();
+    }
+    public async Task UpdateVariantInfo(long productId, long variantId, UpdateVariantDto dto)
     {
-        var variant = await _dbContext.ProductVariants.FirstOrDefaultAsync(v => v.Id == updateVariantDto.Id)
-            ?? throw new BadRequestException($"Variant does not exist");
-        using var transaction = await _dbContext.Database.BeginTransactionAsync();
-        try
-        {
-            variant.Name = updateVariantDto.Name;
-            variant.Price = updateVariantDto.Price;
-            variant.Stock = updateVariantDto.Stock;
-            variant.SKU = updateVariantDto.SKU;
-            await _dbContext.SaveChangesAsync();
-            await transaction.CommitAsync();
-        }
-        catch (Exception e)
-        {
-            await transaction.RollbackAsync();
-            throw new BadRequestException(e.Message);
-        }
+        // Kiểm tra chéo: Variant phải tồn tại VÀ thuộc về đúng Product
+        var variant = await _dbContext.ProductVariants
+                          .FirstOrDefaultAsync(v => v.Id == variantId && v.ProductId == productId)
+                      ?? throw new BadRequestException("Variant not found in this product scope.");
+
+        // Không cần Transaction vì chỉ tác động 1 bản ghi
+        variant.Name = dto.Name;
+        variant.Price = dto.Price;
+        variant.Stock = dto.Stock;
+        variant.SKU = dto.SKU;
+
+        await _dbContext.SaveChangesAsync(); 
+        // Audit Trail sẽ tự động điền UpdatedBy/UpdatedAt nhờ vào phần trước chúng ta đã làm
     }
 
     public async Task UpdateVariantImage()
@@ -250,10 +237,14 @@ public class ProductService
         await _dbContext.SaveChangesAsync();
     }
 
-    public async Task DeactiveVariant(long id)
+    public async Task DeactiveVariant(long productId, long id)
     {
         var variant = await _dbContext.ProductVariants.FirstOrDefaultAsync(v => v.Id == id)
             ?? throw new BadRequestException($"Variant does not exist");
+        if (variant.ProductId != productId)
+        {
+            throw new BadRequestException($"Variant does not match with product");
+        }
         variant.IsActive = false;
         await _dbContext.SaveChangesAsync();
     }
@@ -293,5 +284,28 @@ public class ProductService
             NextCursor: nextCursor, 
             HasMore: hasMore
             );
+    }
+
+    public async Task GetProductDetails(long productId)
+    {
+        var product = await _dbContext.Products.AsNoTracking()
+            .Include(p => p.ProductVariants)
+            .ThenInclude(v => v.VariantMedias)
+            .ThenInclude(m => m.MediaAsset.Url)
+            .Select(p => new
+            {
+                Id = p.Id,
+                BrandName = p.BrandName,
+                ThumbnailLink = p.ProductMedias.Where(m => m.ProductVariantId == null).FirstOrDefault().MediaAsset.Url,
+                Variants = p.ProductVariants.Select(v => new
+                {
+                    v.ProductId,
+                    v.Price,
+                    v.Stock,
+                    v.SKU,
+                    VariantMedias = v.VariantMedias.Select(m => m.MediaAsset.Url)
+                })
+            })
+            .FirstOrDefaultAsync(p => p.Id == productId);
     }
 }

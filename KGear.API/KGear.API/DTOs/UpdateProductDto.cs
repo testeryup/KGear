@@ -4,7 +4,7 @@ namespace KGear.API.DTOs;
 
 public class UpdateProductDto
 {
-    public long ProductId { get; set; }
+    // public long ProductId { get; set; }
     public string Name { get; set; }
     public string Description { get; set; }
     public string BrandName { get; set; }
