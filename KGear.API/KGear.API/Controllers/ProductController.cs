@@ -49,16 +49,16 @@ public class ProductController : ControllerBase
         return Ok(new { success = true });
     }
 
-    [HttpGet]
-    public async Task<IActionResult> GetProductAsync(ProductDTO.CursorRequest dto)
+    [HttpGet()]
+    public async Task<IActionResult> GetProductAsync([FromQuery] ProductDTO.CursorRequest dto)
     {
         var result = await _productService.GetProductsAsync(dto);
         return Ok(result);
     }
 
-    [HttpGet("{productId}")]
-    public async Task<IActionResult> GetProductAsync(long productId)
-    {
-        return Ok();
-    }
+    // [HttpGet("{productId}")]
+    // public async Task<IActionResult> GetProductAsync(long productId)
+    // {
+    //     return Ok();
+    // }
 }

@@ -1,5 +1,7 @@
 /kgear-web/kgear-web/node_modules/
 /kgear-web/kgear-web/.env
+/kgear-web/kgear-web/.vscode/
+/kgear-web/kgear-web/.agent/
 /KGear/KGear/bin/
 /KGear/KGear/obj/
 /KGear/KGear/appsettings.json
@@ -8,3 +10,4 @@
 /KGear.API/KGear.API/obj/
 /KGear.API/KGear.API/appsettings.json
 /KGear.API/KGear.API/.idea/
+/.agent/skills/

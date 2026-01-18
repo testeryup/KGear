@@ -167,34 +167,34 @@ public class ProductService
             throw;
         }
     }
-    public async Task UpdateProduct(long productId, UpdateProductDto updateDto)
-    {
-        var product = await _dbContext.Products
-            .Include(p => p.ProductVariants)
-            .ThenInclude(v => v.VariantMedias)
-            .ThenInclude(m => m.MediaAsset)
-            .FirstOrDefaultAsync(p => p.Id == productId)
-            ?? throw new BadRequestException($"Product does not exist");
-
-        var oldPublicIdsToDelete = new List<string>();
-        
-        var variantIdsInDto = updateDto.ProductVariants
-            .Where(v => v.ProductId == product.Id)
-            .Select(v => v.Id)
-            .ToHashSet();
-        var variantsToDelete = product
-            .ProductVariants.Where(v => !variantIdsInDto.Contains(v.Id))
-            // .Select(v => v.Id)
-            .ToList();
-        foreach (var productVariant in variantsToDelete)
-        {
-            var pIds = productVariant.VariantMedias
-                .Select(v => v.MediaAsset.PublicId)
-                .ToHashSet();
-            
-        }
-
-    }
+    // public async Task UpdateProduct(long productId, UpdateProductDto updateDto)
+    // {
+    //     var product = await _dbContext.Products
+    //         .Include(p => p.ProductVariants)
+    //         .ThenInclude(v => v.VariantMedias)
+    //         .ThenInclude(m => m.MediaAsset)
+    //         .FirstOrDefaultAsync(p => p.Id == productId)
+    //         ?? throw new BadRequestException($"Product does not exist");
+    //
+    //     var oldPublicIdsToDelete = new List<string>();
+    //     
+    //     var variantIdsInDto = updateDto.ProductVariants
+    //         .Where(v => v.ProductId == product.Id)
+    //         .Select(v => v.Id)
+    //         .ToHashSet();
+    //     var variantsToDelete = product
+    //         .ProductVariants.Where(v => !variantIdsInDto.Contains(v.Id))
+    //         // .Select(v => v.Id)
+    //         .ToList();
+    //     foreach (var productVariant in variantsToDelete)
+    //     {
+    //         var pIds = productVariant.VariantMedias
+    //             .Select(v => v.MediaAsset.PublicId)
+    //             .ToHashSet();
+    //         
+    //     }
+    //
+    // }
 
     public async Task UpdateProductInfo(long productId, UpdateProductDto dto)
     {
@@ -296,7 +296,7 @@ public class ProductService
             {
                 Id = p.Id,
                 BrandName = p.BrandName,
-                ThumbnailLink = p.ProductMedias.Where(m => m.ProductVariantId == null).FirstOrDefault().MediaAsset.Url,
+                ThumbnailLink = p.ProductMedias!.FirstOrDefault(m => m.ProductVariantId == null)!.MediaAsset.Url,
                 Variants = p.ProductVariants.Select(v => new
                 {
                     v.ProductId,
