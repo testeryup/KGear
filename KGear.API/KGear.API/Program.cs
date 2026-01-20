@@ -9,7 +9,9 @@ using FluentValidation;
 using KGear.API.Middlewares;
 using KGear.API.Services;
 using KGear.API.Validators;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,8 +28,23 @@ builder.Services.AddScoped<AuthService>();
 // add de claim user
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ProductService>();
+builder.Services.AddScoped<OrderService>();
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
 builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
+builder.Services.Configure<RedisSettings>(builder.Configuration.GetSection("RedisSettings"));
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+{
+    var settings = sp.GetRequiredService<IOptions<RedisSettings>>().Value;
+    var configuration = new ConfigurationOptions
+    {
+        EndPoints = { { settings.Endpoint, settings.Port } },
+        User = settings.User,
+        Password = settings.Password,
+        AbortOnConnectFail = false // Quan trọng: Không làm sập App nếu Redis chưa sẵn sàng
+    };
+    return ConnectionMultiplexer.Connect(configuration);
+});
+builder.Services.AddSingleton<RedisService>();
 builder.Services.AddScoped<IMediaService, CloudinaryService>();
 builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();
 // builder.Services.AddFluentValidationAutoValidation();

@@ -13,11 +13,14 @@ namespace KGear.API.Controllers;
 public class OrderController : ControllerBase
 {
     private readonly OrderService _orderService;
+    private readonly RedisService _redisService;
 
-    public OrderController(OrderService orderService)
+    public OrderController(OrderService orderService, RedisService redisService)
     {
         _orderService = orderService;
+        _redisService = redisService;
     }
+    
     [HttpPost("order")]
     public async Task<IActionResult> PlaceOrderAsync([FromBody] OrderDTOs.PlaceOrderRequest request)
     {
@@ -30,12 +33,13 @@ public class OrderController : ControllerBase
         return Ok(result);
     }
 
-    // [AllowAnonymous]
+    [AllowAnonymous]
     [HttpGet("test")]
-    public async Task<string> TestAsync()
+    public async Task<string> TestAsync([FromQuery] string value)
     {
         var userId = User.GetUserId();
         Console.WriteLine(userId);
+        _redisService.Run();
         return userId.ToString();
     }
     

@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using CloudinaryDotNet.Actions;
 using KGear.API.Data;
 using KGear.API.Data.Entities;
@@ -14,11 +15,13 @@ public class ProductService
 {
     private readonly AppDbContext _dbContext;
     private readonly IMediaService _mediaService;
+    private readonly RedisService _redisService;
 
-    public ProductService(AppDbContext dbContext, IMediaService mediaService)
+    public ProductService(AppDbContext dbContext, IMediaService mediaService, RedisService redisService)
     {
         _dbContext = dbContext;
         _mediaService = mediaService;
+        _redisService = redisService;
     }
 
     public async Task CreateProduct(CreateProductDto createProductDto)
@@ -251,6 +254,12 @@ public class ProductService
 
     public async Task<ProductDTO.CursorResponse> GetProductsAsync(ProductDTO.CursorRequest request)
     {
+        string cacheKey = $"products:cursor:lid_{request.LastId}:size_{request.PageSize}";
+        var cachedData = await _redisService.GetValueAsync(cacheKey);
+        if (!string.IsNullOrEmpty(cachedData))
+        {
+            return JsonSerializer.Deserialize<ProductDTO.CursorResponse>(cachedData)!;
+        }
         var query = _dbContext.Products.AsNoTracking();
         if (request.LastId.HasValue)
         {
@@ -278,12 +287,15 @@ public class ProductService
             items.RemoveAt(request.PageSize);
         }
         long? nextCursor = hasMore ? items.Last().Id : null;
-        return new ProductDTO.CursorResponse(
+        var response = new ProductDTO.CursorResponse(
             Status: true, 
             Items: items, 
             NextCursor: nextCursor, 
             HasMore: hasMore
-            );
+        );
+        var serializedData = JsonSerializer.Serialize(response);
+        await _redisService.SetValueAsync(cacheKey, serializedData, TimeSpan.FromMinutes(5));
+        return response;
     }
 
     public async Task GetProductDetails(long productId)
