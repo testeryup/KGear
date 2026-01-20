@@ -2,7 +2,7 @@
 /kgear-web/kgear-web/.env
 /kgear-web/kgear-web/.vscode/
 /kgear-web/kgear-web/.agent/
-/KGear/
+KGear*
 /KGear/KGear/bin/
 /KGear/KGear/obj/
 /KGear/KGear/appsettings.json
