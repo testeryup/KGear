@@ -20,18 +20,15 @@ public class AppDbContext : DbContext
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
         
-        // Gợi ý: Thêm Global Query Filter cho Soft Delete ở đây nếu cần
         // modelBuilder.Entity<Product>().HasQueryFilter(p => p.IsActive);
     }
     
-    // Override bản đồng bộ
     public override int SaveChanges()
     {
         OnBeforeSaving();
         return base.SaveChanges();
     }
 
-    // Override bản bất đồng bộ
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         OnBeforeSaving();
@@ -57,10 +54,10 @@ public class AppDbContext : DbContext
                     break;
 
                 case EntityState.Deleted:
-                    // THỰC HIỆN SOFT DELETE TẠI ĐÂY
-                    entry.State = EntityState.Modified; // Chuyển từ Xóa sang Sửa
+                    // SOFT DELETE 
+                    entry.State = EntityState.Modified;
                     entry.Entity.ModifiedOn = utcNow;
-                    entry.Entity.IsActive = false; // Đánh dấu là đã xóa
+                    entry.Entity.IsActive = false;
                     break;
             }
         }
